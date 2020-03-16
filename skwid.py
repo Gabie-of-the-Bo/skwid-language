@@ -32,6 +32,7 @@ class Skwid_context:
         'ι': lambda i, j: np.arange(i, j),
         '∑': lambda i: np.sum(i),
         'Π': lambda i: np.product(i),
+        'μ': lambda i: np.mean(i),
 
         # Logic operators
         '∃': lambda i: any(i),

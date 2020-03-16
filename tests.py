@@ -1,5 +1,6 @@
 import skwid
-import skwid_functools
+
+import numpy as np
 
 def basic_tests():
     code = '12\n/1,2|#2'
@@ -68,8 +69,24 @@ def naive_primality_test(values):
 
     print('Naive primality test: Success!')
 
+def mse_test(values1, values2):
+    template = 'μ^(-X,Y),2'
+    code = skwid.parse(template).get(0)
+
+    for i, j in zip(values1, values2):
+        r1 = code(X=i, Y=j)
+        r2 = code(Y=j, X=i)
+
+        if r1 != r2 or r1 != np.mean((i - j)**2):
+            print('Mean Square Error test: incorrect {} -> {}'.format(i, res))
+            return
+
+    print('Mean Square Error test: Success!')
+
+
 basic_tests()
 function_tests_1()
 function_tests_2()
 function_tests_3()
 naive_primality_test(range(2, 100))
+mse_test([np.random.rand(100) for i in range(30)], [np.random.rand(100) for i in range(30)])

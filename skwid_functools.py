@@ -1,30 +1,45 @@
-def left_compose(f, p, kwargs): # Construct lambda
-    rem_args = p.__code__.co_argcount
-    rest_args = f.__code__.co_argcount - 1
-    lbody = 'lambda {}{}{}{}{}: f(p({}),{}{}{})'
-    largs = ','.join('a' + str(i) for i in range(rem_args))
-    rargs = ','.join('b' + str(i) for i in range(rest_args))
-    kwargs_l = ','.join('{}=None'.format(i) for i in kwargs)
-    kwargs_r = ','.join('{}={}'.format(i, i) for i in kwargs)
-    comma = ',' if rem_args and rest_args else ''
-    comma2 = ',' if (rem_args or rest_args) and kwargs else ''
-    astrk = '*,' if kwargs else ''
+def get_lhandside(pargs, fargs, kwargs):
+    pargs = ['b{}'.format(i) for i in range(pargs)]
+    fargs = ['a{}'.format(i) for i in range(fargs)]
+    kwargs = ['{}=None'.format(i) for i in kwargs]
+    
+    if kwargs:
+        kwargs = ['*'] + kwargs
 
-    return eval(lbody.format(largs, comma, rargs, comma2 + astrk, kwargs_l, largs + comma + kwargs_r, rargs, comma2, kwargs_r), {'f':f, 'p':p})
+    return ','.join(pargs + fargs + kwargs)
+
+def get_rhandside(fargs, kwargs):
+    fargs = ['a{}'.format(i) for i in range(fargs)]
+    kwargs = ['{}={}'.format(i, i) for i in kwargs]
+
+    return ','.join(fargs + kwargs)
+
+def get_rhandside_compose(pargs, fargs, kwargs):
+    pargs = ['b{}'.format(i) for i in range(pargs)]
+    fargs = ['a{}'.format(i) for i in range(fargs)]
+    kwargs = ['{}={}'.format(i, i) for i in kwargs]
+    p = 'p({})'.format(','.join(pargs + kwargs))
+
+    return ','.join([p] + fargs + kwargs)
+
+def left_compose(f, p, kwargs): # Construct lambda
+    lbody = 'lambda {}: f({})'
+
+    pargs = p.__code__.co_argcount
+    fargs = f.__code__.co_argcount - 1
+    lhandside = get_lhandside(pargs, fargs, kwargs)
+    rhandside = get_rhandside_compose(pargs, fargs, kwargs)
+
+    return eval(lbody.format(lhandside, rhandside), {'f':f, 'p':p})
 
 def left_bind(f, arg, kwargs):
-    rem_args = f.__code__.co_argcount - 1
-    lbody = 'lambda {}{}{}: f(arg,{}{}{})'
-    largs = ','.join('a' + str(i) for i in range(rem_args))
-    rargs = ','.join('b' + str(i) for i in range(1))
-    kwargs_l = ','.join('{}=None'.format(i) for i in kwargs)
-    kwargs_r = ','.join('{}={}'.format(i, i) for i in kwargs)
-    comma = ',' if rem_args else ''
-    comma2 = ',' if comma and kwargs else ''
-    comma3 = ',' if kwargs else ''
-    astrk = '*,' if kwargs else ''
+    lbody = 'lambda {}: f(arg,{})'
 
-    return eval(lbody.format(largs, comma2 + astrk, kwargs_l, largs, comma2, kwargs_r), {'f':f, 'arg':arg})
+    fargs = f.__code__.co_argcount - 1
+    lhandside = get_lhandside(0, fargs, kwargs)
+    rhandside = get_rhandside(fargs, kwargs)
+
+    return eval(lbody.format(lhandside, rhandside), {'f':f, 'arg':arg})
 
 def add_kwargs(f, kwargs):
     rem_args = f.__code__.co_argcount
