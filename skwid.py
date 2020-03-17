@@ -1,5 +1,5 @@
 from inspect import isfunction
-from skwid_functools import left_compose, left_bind, add_kwargs, flatten
+from skwid_functools import left_compose, left_bind, add_kwargs, flatten, combinator
 from typing import List, Set
 
 import numpy as np
@@ -13,9 +13,6 @@ This is the official implementation of the くコ:彡 programming language (Skwi
 
 """
 
-class Skwid_expression:
-    pass
-
 class Skwid_context:
     __func_table__ = {
         # Basic operators
@@ -28,17 +25,21 @@ class Skwid_context:
         '=': lambda i, j: i == j,
         
         # Basic functions
+        '¡': lambda i: i + 1,
         '&': lambda i, j: np.array([i]*j),
         'ι': lambda i, j: np.arange(i, j),
         '∑': lambda i: np.sum(i),
         'Π': lambda i: np.product(i),
         'μ': lambda i: np.mean(i),
-        '!': lambda i, j: (print(i, j), i[j])[1],
+        '!': lambda i, j: i[j],
 
         # Logic operators
         '∃': lambda i: np.any(i),
         '∀': lambda i: np.all(i),
         '¬': lambda i: not i,
+
+        # Higher order
+        '$': lambda i, j: np.array(list(map(j, i))),
 
         # IO
         '>': lambda i: print(i),
@@ -51,7 +52,7 @@ class Skwid_context:
         return self.functions[index]
 
 class Skwid_token:
-    NUM, VAR, FUN, REF = range(4)
+    NUM, VAR, FUN, REF, COM = range(5)
 
     def __init__(self, rep, token_type, flatten=False):
         self.rep = rep
@@ -70,6 +71,9 @@ class Skwid_token:
     def is_ref(self):
         return self.token_type == Skwid_token.REF
 
+    def is_combinator(self):
+        return self.token_type == Skwid_token.COM
+
     def __repr__(self):
         if not self.is_ref():
             return str(self.rep)
@@ -79,13 +83,16 @@ class Skwid_token:
 def tokenize(code: str) -> List[Skwid_token]:
     is_az = lambda c: ord('A') <= ord(c.upper()) <= ord('Z')
 
+    if code == '`':
+        return [Skwid_token('', Skwid_token.COM)]
+
     if all(i.isdigit() for i in code):
         return [Skwid_token(int(code), Skwid_token.NUM)]
 
     if all(is_az(i) for i in code):
         return [Skwid_token(code, Skwid_token.VAR)]
 
-    signature = lambda c: (c.isdigit(), is_az(c), c == '(', c in '#@')
+    signature = lambda c: (c.isdigit(), is_az(c), c == '(', c in '#@', c == '`')
 
     for i in range(len(code) - 1):
         if code[i] in '#@':
@@ -158,6 +165,9 @@ def parse(code: str, variables=None) -> Skwid_context:
         if is_enclosed(tokens):
             return parse_rec(tokens[1:-1], contexts, variables, args)
 
+        if t.is_combinator():
+            return add_kwargs(combinator(parse_rec(tokens[1:], contexts, variables, args)), variables)
+
         if args:
             start = 0
             func_args = []
@@ -213,3 +223,6 @@ def parse(code: str, variables=None) -> Skwid_context:
         contexts.append(parse_rec(t, contexts, v))
 
     return Skwid_context(contexts)
+
+def compile(code: str):
+    return parse(code).functions[-1]

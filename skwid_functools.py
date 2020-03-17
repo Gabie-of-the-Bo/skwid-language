@@ -72,3 +72,12 @@ def flatten(f):
     rhandside = get_rhandside_flatten(f.__code__.co_argcount, vs)
 
     return eval(lbody.format(lhandside, rhandside), {'f':f})
+
+def combinator(f):
+    lbody = 'lambda: lambda {}: f({})'
+
+    fargs = f.__code__.co_argcount
+    lhandside = get_lhandside(0, fargs, [])
+
+    return eval(lbody.format(lhandside, lhandside), {'f':f})
+
