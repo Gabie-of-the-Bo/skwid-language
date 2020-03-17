@@ -1,5 +1,5 @@
 from inspect import isfunction
-from skwid_functools import left_compose, left_bind, add_kwargs
+from skwid_functools import left_compose, left_bind, add_kwargs, flatten
 from typing import List, Set
 
 import numpy as np
@@ -33,10 +33,11 @@ class Skwid_context:
         '∑': lambda i: np.sum(i),
         'Π': lambda i: np.product(i),
         'μ': lambda i: np.mean(i),
+        '!': lambda i, j: (print(i, j), i[j])[1],
 
         # Logic operators
-        '∃': lambda i: any(i),
-        '∀': lambda i: all(i),
+        '∃': lambda i: np.any(i),
+        '∀': lambda i: np.all(i),
         '¬': lambda i: not i,
 
         # IO
@@ -52,9 +53,10 @@ class Skwid_context:
 class Skwid_token:
     NUM, VAR, FUN, REF = range(4)
 
-    def __init__(self, rep, token_type):
+    def __init__(self, rep, token_type, flatten=False):
         self.rep = rep
         self.token_type = token_type
+        self.flatten = flatten
 
     def is_number(self):
         return self.token_type == Skwid_token.NUM
@@ -72,7 +74,7 @@ class Skwid_token:
         if not self.is_ref():
             return str(self.rep)
 
-        return '#' + str(self.rep)    
+        return ('@' if flatten else '#') + str(self.rep)    
 
 def tokenize(code: str) -> List[Skwid_token]:
     is_az = lambda c: ord('A') <= ord(c.upper()) <= ord('Z')
@@ -83,16 +85,16 @@ def tokenize(code: str) -> List[Skwid_token]:
     if all(is_az(i) for i in code):
         return [Skwid_token(code, Skwid_token.VAR)]
 
-    signature = lambda c: (c.isdigit(), is_az(c), c == '(')
+    signature = lambda c: (c.isdigit(), is_az(c), c == '(', c in '#@')
 
     for i in range(len(code) - 1):
-        if code[i] == '#':
+        if code[i] in '#@':
             tokens = tokenize(code[1:])
 
             if tokens[0].is_function() or tokens[0].is_ref():
                 tokens = [Skwid_token('', Skwid_token.VAR)] + tokens
             
-            tokens[0] = Skwid_token(tokens[0].rep, Skwid_token.REF)
+            tokens[0] = Skwid_token(tokens[0].rep, Skwid_token.REF, code[i] == '@')
 
             return tokens
         
@@ -131,11 +133,9 @@ def is_enclosed(tokens):
 
     return count == 0
 
-def parse(code: str, variables=set()) -> Skwid_context:
-    if '\n' in code:
-        return Skwid_context(list(parse(j).functions[0] for i in code.split('\n') if i for j in i.split('|') if j))
+def parse(code: str, variables=None) -> Skwid_context:
+    def parse_rec(tokens: List[Skwid_token], contexts, variables: Set[str], args=False):
 
-    def parse_rec(tokens: List[Skwid_token], variables: Set[str], args=False):
         t = tokens[0]
         
         if len(tokens) == 1:
@@ -148,12 +148,36 @@ def parse(code: str, variables=set()) -> Skwid_context:
             if t.is_function():
                 return add_kwargs(Skwid_context.__func_table__[t.rep], variables)
 
-        if is_enclosed(tokens):
-            return parse_rec(tokens[1:-1], variables, args)
+            if t.is_ref():
+                if t.flatten:
+                    ref = contexts[t.rep]
+                    return add_kwargs(flatten(ref), variables) if isfunction(ref) else ref
 
-        if t.rep != '(' and t.is_function():
-            f = add_kwargs(Skwid_context.__func_table__[t.rep], variables)
-            args = parse_rec(tokens[1:], variables, True)
+                return contexts[t.rep]
+
+        if is_enclosed(tokens):
+            return parse_rec(tokens[1:-1], contexts, variables, args)
+
+        if args:
+            start = 0
+            func_args = []
+
+            while tokens:
+                index = is_tuple(tokens)
+
+                if index:
+                    func_args.append(parse_rec(tokens[:index], contexts, variables))
+                    tokens = tokens[(index + 1):]
+                
+                else:
+                    func_args.append(parse_rec(tokens, contexts, variables))
+                    tokens = None
+
+            return func_args
+
+        if t.rep != '(' and (t.is_function() or t.is_ref()):
+            f = parse_rec([t], contexts, variables, args)
+            args = parse_rec(tokens[1:], contexts, variables, True)
 
             if not isinstance(args, list):
                 args = [args]
@@ -172,28 +196,20 @@ def parse(code: str, variables=set()) -> Skwid_context:
         if not args and (t.is_number() or t.is_variable()):
             raise RuntimeError('Invalid composition with {} as operand'.format(t))
 
-        if args:
-            start = 0
-            func_args = []
-
-            while tokens:
-                index = is_tuple(tokens)
-
-                if index:
-                    func_args.append(parse_rec(tokens[:index], variables))
-                    tokens = tokens[(index + 1):]
-                
-                else:
-                    func_args.append(parse_rec(tokens, variables))
-                    tokens = None
-
-            return func_args
-
         return 'NOT_IMPL'
 
-    tokens = tokenize(code.replace(' ', ''))
+    functions = [tokenize(j.replace(' ', '')) for i in code.split('\n') if i for j in i.split('|') if j]
+    variables = [list(sorted({t.rep for t in tokens if t.is_variable()})) for tokens in functions]
 
-    if not variables:
-        variables = list(sorted({t.rep for t in tokens if t.is_variable()}))
+    for i, tokens in enumerate(functions):
+        for ref in (t.rep for t in tokens if t.is_ref() and not t.flatten):
+            variables[i] += variables[ref]
 
-    return Skwid_context([parse_rec(tokens, variables)])
+        variables[i] = list(sorted(set(variables[i])))
+
+    contexts = []
+
+    for t, v in zip(functions, variables):
+        contexts.append(parse_rec(t, contexts, v))
+
+    return Skwid_context(contexts)
