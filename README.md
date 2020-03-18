@@ -13,7 +13,7 @@
  
  ### Basics
  
-Skwid is a stack-based, functional language. This means that it excels at working with functions and allows easy composition. If you have ever worked with APL or J, this will be very easy to get.
+Skwid is a array-oriented, functional language. This means that it excels at working with functions and allows easy composition. If you have ever worked with APL or J, this will be very easy to get.
 
 The basic syntax is as follows:
 
