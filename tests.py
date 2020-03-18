@@ -58,7 +58,7 @@ def function_tests_3():
     print('Function tests 3: Success!')
 
 def naive_primality_test(values):
-    template = '∀%X,(ι2,X)'
+    template = '∀%X,ι2,X'
     code = skwid.compile(template)
 
     for i in values:        
@@ -71,7 +71,7 @@ def naive_primality_test(values):
     print('Naive primality test: Success!')
 
 def mse_test(values1, values2):
-    template = 'μ^(-X,Y),2'
+    template = 'μ^-X,Y,2'
     code = skwid.compile(template)
 
     for i, j in zip(values1, values2):
@@ -101,14 +101,17 @@ def composed_naive_primality_test(values):
     print('Composed naive primality test: Success!')
 
 def naive_prime_list_test(limit):
-    template = 'ι2,X|∀%X,#0|!#0,($#0,`@1)|@2'
-    code = skwid.compile(template)
+    template1 = 'ι2,X|∀%X,#0|!#0,$#0,`@1|@2'
+    template2 = '∀%X,ι2,X|?ι2,X,`@0|@1'
+    code1 = skwid.compile(template1)
+    code2 = skwid.compile(template2)
     
-    res = code(limit)
+    r1 = code1(limit)
+    r2 = code2(limit)
     sol = np.array([i for i in range(2, limit) if all(i % j for j in range(2, i))])
 
-    if any(res != sol):
-        print('Naive prime list test: incorrect {} -> {}, {}'.format(i, res))
+    if any(r1 != r2) or any(r1 != sol):
+        print('Naive prime list test: incorrect {} -> {}, {}'.format(sol, r1, r2))
 
     print('Naive prime list test: Success!')
 

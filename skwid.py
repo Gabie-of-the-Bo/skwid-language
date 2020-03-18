@@ -1,6 +1,8 @@
-from inspect import isfunction
 from skwid_functools import left_compose, left_bind, add_kwargs, flatten, combinator
+
+from inspect import isfunction
 from typing import List, Set
+from functools import reduce
 
 import numpy as np
 
@@ -25,7 +27,6 @@ class Skwid_context:
         '=': lambda i, j: i == j,
         
         # Basic functions
-        '¡': lambda i: i + 1,
         '&': lambda i, j: np.array([i]*j),
         'ι': lambda i, j: np.arange(i, j),
         '∑': lambda i: np.sum(i),
@@ -40,6 +41,8 @@ class Skwid_context:
 
         # Higher order
         '$': lambda i, j: np.array(list(map(j, i))),
+        '?': lambda i, j: np.array([k for k in i if j(k)]),
+        '~': lambda i, j, k: reduce(i, j, k),
 
         # IO
         '>': lambda i: print(i),
