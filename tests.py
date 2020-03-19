@@ -103,15 +103,22 @@ def composed_naive_primality_test(values):
 def naive_prime_list_test(limit):
     template1 = 'ι2,X|∀%X,#0|!#0,$#0,`@1|@2'
     template2 = '∀%X,ι2,X|?ι2,X,`@0|@1'
+    template3 = """
+    ∀%X,ι2,X    [Naive primality test]
+    ?ι2,X,`@0   [Filter list starting from two]
+    @1          [Flatten result]
+    """
     code1 = skwid.compile(template1)
     code2 = skwid.compile(template2)
+    code3 = skwid.compile(template3)
     
     r1 = code1(limit)
     r2 = code2(limit)
+    r3 = code3(limit)
     sol = np.array([i for i in range(2, limit) if all(i % j for j in range(2, i))])
 
-    if any(r1 != r2) or any(r1 != sol):
-        print('Naive prime list test: incorrect {} -> {}, {}'.format(sol, r1, r2))
+    if any(r1 != r2) or any(r1 != r3) or any(r1 != sol):
+        print('Naive prime list test: incorrect {} -> {}, {}, {}'.format(sol, r1, r2, r3))
 
     print('Naive prime list test: Success!')
 

@@ -3,6 +3,7 @@ from skwid_functools import left_compose, left_bind, add_kwargs, flatten, combin
 from inspect import isfunction
 from typing import List, Set
 from functools import reduce
+from re import sub
 
 import numpy as np
 
@@ -82,6 +83,21 @@ class Skwid_token:
             return str(self.rep)
 
         return ('@' if flatten else '#') + str(self.rep)    
+
+def remove_comments(code: str) -> str:
+    intervals = [[0]]
+
+    for i, c in enumerate(code):
+        if c == '[' and len(intervals[-1]) == 1:
+            intervals[-1].append(i)
+        
+        elif c == ']' and len(intervals[-1]) == 2:
+            intervals.append([i + 1])
+
+    if len(intervals[-1]) == 1:
+        intervals[-1].append(len(code))
+
+    return ''.join(code[i:j] for i, j in intervals)
 
 def tokenize(code: str) -> List[Skwid_token]:
     is_az = lambda c: ord('A') <= ord(c.upper()) <= ord('Z')
@@ -211,7 +227,8 @@ def parse(code: str, variables=None) -> Skwid_context:
 
         return 'NOT_IMPL'
 
-    functions = [tokenize(j.replace(' ', '')) for i in code.split('\n') if i for j in i.split('|') if j]
+    code = sub(r'\s', '', remove_comments(code).replace('\n', '|'))
+    functions = [tokenize(i) for i in code.split('|') if i]
     variables = [list(sorted({t.rep for t in tokens if t.is_variable()})) for tokens in functions]
 
     for i, tokens in enumerate(functions):
