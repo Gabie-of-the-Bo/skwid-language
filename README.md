@@ -51,6 +51,8 @@ But that's trivial, let's make something more complex. lets make a function that
 
 Of course, we can omit the arguments and just type ```++``` to get a lambda that sums three elements.
 
+You may have noticed that arguments are always separated by commas and that there seems to be no mandatory spaces. To be exact, **there cannot be any spaces**, since the Skwid compiler will automatically remove them.
+
 ### Variables
 
 Now comes the beautiful world of variables, which are more like kind of named placeholders. Let's imagine that we want to return a function that substracts a number from two. We would do it like this:
@@ -101,6 +103,22 @@ This effectively returns a function with arity zero that, when applied, returns 
 Some notes:
 * ```$``` is the map function with arity 2. This means that ```$X,Y``` returns a copy of ```X``` where each element has been applied the unary function ```Y```.
 * The composition operator will not preserve the keyword arguments, so references should be flattened when this operator is applied.
+
+### Comments
+
+This is an easy one. We consider that a comment is any sequence of characters that is enclosed in square brackets. Here are some examples:
+
+```
++1|$X,`#0 [This is a comment]
+
++1|$X,[This is also a comment]`#0
+
++1|$X,[And
+so is
+this]`#0
+```
+
+You can use comments to add explanations to rather opaque code or to make multi-line expressions!
 
 ## Functions
  
