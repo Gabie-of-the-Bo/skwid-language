@@ -1,5 +1,4 @@
 import skwid
-import skwid_functools
 
 import numpy as np
 

@@ -245,4 +245,17 @@ def parse(code: str, variables=None) -> Skwid_context:
     return Skwid_context(contexts)
 
 def compile(code: str):
-    return parse(code).functions[-1]
+    f = parse(code).functions[-1]
+
+    def safe_function_wrapper(*args, **kwargs):
+        if len(args) != f.__code__.co_argcount:
+            raise RuntimeError('invalid number of positional arguments (expected {}, but {} were given)'.format(f.__code__.co_argcount, len(args)))
+
+        if f.__kwdefaults__:
+            for var in f.__kwdefaults__.keys():
+                if var not in kwargs:
+                    raise RuntimeError('Missing value for variable {} in function call'.format(var))
+
+        return f(*args, **kwargs)
+
+    return safe_function_wrapper
